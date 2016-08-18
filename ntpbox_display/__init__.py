@@ -133,7 +133,7 @@ class App:
             seconds = seconds * 1000.0
             unit_i += 1
 
-        return "{:.3f}{}".format(seconds, units[unit_i])
+        return u"{:.3f}{}".format(seconds, units[unit_i])
 
     @staticmethod
     def render(output, fnt_time, fnt_d, fnt_icon, sat_count, ntp_status, jitter, x, y):
