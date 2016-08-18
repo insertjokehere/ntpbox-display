@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
-from . import widgets, lib, outputs, gps_poll
+from . import widgets, lib, outputs, gps_poll, ntp_poll
 from PIL import ImageFont
 from pkg_resources import resource_stream
 from time import sleep
 import argparse
 import logging
-import subprocess
 
 SYM_SATCOUNT = u"\uf012"
 SYM_SYNCSTATE = u"\uf0c2"
@@ -14,6 +13,7 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 gps_poller = None
+ntp_poller = None
 
 
 class App:
@@ -102,28 +102,12 @@ class App:
 
     @staticmethod
     def _status_ntp(host):
-        try:
-            out = subprocess.check_output(['ntpq', '-c', 'rv', host])
-            params = [x for x in out.decode('utf-8').replace('\n', ' ').split(', ')]
-            jitter = float([x for x in params if x.startswith('sys_jitter')][0].split('=')[1]) / 1000.0
-        except Exception as e:
-            logger.exception('Failed to get ntp system status')
-            jitter = None
+        global ntp_poller
+        if ntp_poller is None:
+            ntp_poller = ntp_poll.NTPPoller(host)
+            ntp_poller.start()
 
-        try:
-            out = subprocess.check_output(['ntpq', '-p', host])
-            ntp_status = [x[0] for x in out.decode('utf-8').split('\n')[2:-1]]
-            prio = [' ', 'X', '-', '+', '*', 'o']
-            max_p = 0
-            for s in ntp_status:
-                if prio.index(s) > max_p:
-                    max_p = prio.index(s)
-            ntp_status = prio[max_p]
-        except Exception as e:
-            logger.exception('Failed to get ntp peer status')
-            ntp_status = '?'
-
-        return ntp_status, jitter
+        return ntp_poller.ntp_status, ntp_poller.jitter
 
     @staticmethod
     def _format_time(seconds):
