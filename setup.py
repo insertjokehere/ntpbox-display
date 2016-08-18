@@ -26,6 +26,7 @@ setup(
     author="Will Hughes",
     author_email="will@willhughes.name",
     url="https://github.com/insertjokehere/ntpbox-display",
+    package_data={'': ['fontawesome-webfont.ttf']},
     entry_points={
         'console_scripts': [
             'ntpbox-display = ntpbox_display:App.main',
