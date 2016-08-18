@@ -1,4 +1,5 @@
-from . import widgets, lib, outputs
+# -*- coding: utf-8 -*-
+from . import widgets, lib, outputs, gps_poll
 from PIL import ImageFont
 from pkg_resources import resource_stream
 from time import sleep
@@ -6,10 +7,13 @@ import argparse
 import logging
 import subprocess
 
-SYM_SATCOUNT = "\uf012"
-SYM_SYNCSTATE = "\uf0c2"
+SYM_SATCOUNT = u"\uf012"
+SYM_SYNCSTATE = u"\uf0c2"
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+
+gps_poller = None
 
 
 class App:
@@ -40,6 +44,7 @@ class App:
 
         status_parser.add_argument('--once', action='store_true')
         status_parser.add_argument('--ntp-host', default="localhost")
+        status_parser.add_argument('--gps-host', default="localhost")
 
         status_parser.set_defaults(func=App.status)
 
@@ -49,7 +54,14 @@ class App:
             logger.error("Must specify --output-path for output png")
             exit(1)
 
-        args.func(args)
+        try:
+            args.func(args)
+        except:
+            logger.exception("Something went wrong")
+            global gps_poller
+            if gps_poller is not None:
+                gps_poller.stop()
+                gps_poller.join()
 
     @staticmethod
     def _get_output(args):
@@ -71,19 +83,29 @@ class App:
         else:
             fnt_icon = ImageFont.truetype(args.icon_font, args.icon_font_size)
 
-        ntp_status, ntp_jitter = App._status_ntp(args.ntp_host)
-
         while True:
-            App.render(App._get_output(args), fnt_time, fnt_d, fnt_icon, 3, ntp_status, ntp_jitter, args.width, args.height)
+            ntp_status, ntp_jitter = App._status_ntp(args.ntp_host)
+            gps_sats = App._status_gps(args.gps_host)
+            App.render(App._get_output(args), fnt_time, fnt_d, fnt_icon, gps_sats, ntp_status, ntp_jitter, args.width, args.height)
             if args.once:
                 break
             sleep(0.5)
 
     @staticmethod
+    def _status_gps(host):
+        global gps_poller
+        if gps_poller is None:
+            gps_poller = gps_poll.GpsPoller(host)
+            gps_poller.start()
+
+        return len(gps_poller.value().satellites)
+
+    @staticmethod
     def _status_ntp(host):
         try:
             out = subprocess.check_output(['ntpq', '-c', 'rv', host])
-            jitter = float([x for x in out.decode('utf-8').replace('\n', ' ').split(', ') if x.startswith('sys_jitter')][0].split('=')[1]) / 1000.0
+            params = [x for x in out.decode('utf-8').replace('\n', ' ').split(', ')]
+            jitter = float([x for x in params if x.startswith('sys_jitter')][0].split('=')[1]) / 1000.0
         except Exception as e:
             logger.exception('Failed to get ntp system status')
             jitter = None
@@ -111,7 +133,7 @@ class App:
         if seconds == 0:
             return "0.000s"
 
-        units = ['s', 'ms', 'µs', 'ns', 'ps']
+        units = ['s', 'ms', u'µs', 'ns', 'ps']
         unit_i = 0
 
         while seconds < 1:
@@ -137,9 +159,9 @@ class App:
         time = widgets.TimeWidget(draw=draw, font=fnt_time)
 
         if jitter is not None:
-            jitter_text = "±{}".format(App._format_time(jitter))
+            jitter_text = u"±{}".format(App._format_time(jitter))
         else:
-            jitter_text = "±?.???s"
+            jitter_text = u"±?.???s"
 
         ntp_jitter = widgets.CenteredTextWidget(
             font=fnt_d,

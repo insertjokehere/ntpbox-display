@@ -2,7 +2,7 @@ BLACK = 0
 WHITE = 1
 
 
-class Widget():
+class Widget(object):
 
     def __init__(self, draw, offset_x=0, offset_y=0):
         self.draw = draw
@@ -51,7 +51,7 @@ class CenterWidgetMixin():
 class TextWidget(Widget):
 
     def __init__(self, font, text="", colour=WHITE, **kwargs):
-        super().__init__(**kwargs)
+        super(TextWidget, self).__init__(**kwargs)
         self.font = font
         self._text = text
         self.colour = colour
@@ -75,7 +75,7 @@ class TextWidget(Widget):
 class CompositeWidget(Widget):
 
     def __init__(self, widgets, reflow=None, **kwargs):
-        super().__init__(**kwargs)
+        super(CompositeWidget, self).__init__(**kwargs)
         self._widgets = widgets
         if reflow is None:
             self._reflow = lambda w, x, y: (0, 0)

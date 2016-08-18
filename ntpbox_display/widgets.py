@@ -6,7 +6,7 @@ from . import lib
 class CenteredTextWidget(lib.CenterWidgetMixin, lib.TextWidget):
 
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+        super(CenteredTextWidget, self).__init__(**kwargs)
 
 
 class TimeWidget(CenteredTextWidget):
@@ -33,7 +33,7 @@ class IconValueWidget(lib.CompositeWidget):
 
         widgets = [icon, text]
 
-        super().__init__(
+        super(IconValueWidget, self).__init__(
             widgets=widgets,
             reflow=lib.CompositeWidget.reflow_horizontal,
             draw=draw,
