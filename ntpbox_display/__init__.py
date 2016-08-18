@@ -1,11 +1,14 @@
-from . import widgets, lib
-from PIL import Image, ImageDraw, ImageFont
+from . import widgets, lib, outputs
+from PIL import ImageFont
 from pkg_resources import resource_stream
 from time import sleep
 import argparse
+import logging
 
 SYM_SATCOUNT = "\uf012"
 SYM_SYNCSTATE = "\uf0c2"
+
+logger = logging.getLogger(__name__)
 
 
 class App:
@@ -17,6 +20,7 @@ class App:
         parser.add_argument('--width', default=128, type=int)
         parser.add_argument('--height', default=64, type=int)
         parser.add_argument('--output', choices=['png'], default='png')
+        parser.add_argument('--output-path', required=False)
 
         subparser = parser.add_subparsers(dest='command')
         subparser.required = True
@@ -37,7 +41,19 @@ class App:
         status_parser.set_defaults(func=App.status)
 
         args = parser.parse_args()
+
+        if args.output == "png" and not args.output_path:
+            logger.error("Must specify --output-path for output png")
+            exit(1)
+
         args.func(args)
+
+    @staticmethod
+    def _get_output(args):
+        if args.output == 'png':
+            return outputs.PNGOutput(args.output_path, args.width, args.height)
+        else:
+            raise NotImplementedError
 
     @staticmethod
     def status(args):
@@ -53,16 +69,14 @@ class App:
             fnt_icon = ImageFont.truetype(args.icon_font, args.icon_font_size)
 
         while True:
-            App.render(fnt_time, fnt_d, fnt_icon, 3, 'o', 0.001, args.width, args.height)
+            App.render(App._get_output(args), fnt_time, fnt_d, fnt_icon, 3, 'o', 0.001, args.width, args.height)
             if args.once:
                 break
             sleep(0.5)
 
     @staticmethod
-    def render(fnt_time, fnt_d, fnt_icon, sat_count, ntp_status, jitter, x, y):
-        im = Image.new(mode='1', size=(x, y))
-
-        draw = ImageDraw.Draw(im)
+    def render(output, fnt_time, fnt_d, fnt_icon, sat_count, ntp_status, jitter, x, y):
+        draw = output.getcontext()
 
         root_widget = lib.CompositeWidget(draw=draw, widgets=[])
 
@@ -87,7 +101,4 @@ class App:
 
         root_widget.render()
 
-        del draw
-
-        with open('test.png', 'wb') as f:
-            im.save(f, 'png')
+        output.flush()
