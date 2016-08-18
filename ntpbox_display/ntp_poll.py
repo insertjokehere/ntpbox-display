@@ -34,7 +34,7 @@ class NTPPoller(threading.Thread):
             try:
                 out = subprocess.check_output(['ntpq', '-p', self.host])
                 ntp_status = [x[0] for x in out.decode('utf-8').split('\n')[2:-1]]
-                prio = [' ', 'X', '-', '+', '*', 'o']
+                prio = [' ', 'x', '-', '+', '*', 'o']
                 max_p = 0
                 for s in ntp_status:
                     if prio.index(s) > max_p:

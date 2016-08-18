@@ -63,6 +63,11 @@ class App:
                 gps_poller.stop()
                 gps_poller.join()
 
+            global ntp_poller
+            if ntp_poller is not None:
+                ntp_poller.stop()
+                ntp_poller.join()
+
     @staticmethod
     def _get_output(args):
         if args.output == 'png':
@@ -98,7 +103,11 @@ class App:
             gps_poller = gps_poll.GpsPoller(host)
             gps_poller.start()
 
-        return len(gps_poller.value().satellites)
+        val = gps_poller.value()
+        if val is not None:
+            return len(val.satellites)
+        else:
+            return 0
 
     @staticmethod
     def _status_ntp(host):
