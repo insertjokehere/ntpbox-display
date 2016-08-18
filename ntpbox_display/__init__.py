@@ -4,6 +4,7 @@ from pkg_resources import resource_stream
 from time import sleep
 import argparse
 import logging
+import subprocess
 
 SYM_SATCOUNT = "\uf012"
 SYM_SYNCSTATE = "\uf0c2"
@@ -38,6 +39,8 @@ class App:
         fonts_group.add_argument('--icon-font-size', default=10, type=int)
 
         status_parser.add_argument('--once', action='store_true')
+        status_parser.add_argument('--ntp-host', default="localhost")
+
         status_parser.set_defaults(func=App.status)
 
         args = parser.parse_args()
@@ -68,11 +71,54 @@ class App:
         else:
             fnt_icon = ImageFont.truetype(args.icon_font, args.icon_font_size)
 
+        ntp_status, ntp_jitter = App._status_ntp(args.ntp_host)
+
         while True:
-            App.render(App._get_output(args), fnt_time, fnt_d, fnt_icon, 3, 'o', 0.001, args.width, args.height)
+            App.render(App._get_output(args), fnt_time, fnt_d, fnt_icon, 3, ntp_status, ntp_jitter, args.width, args.height)
             if args.once:
                 break
             sleep(0.5)
+
+    @staticmethod
+    def _status_ntp(host):
+        try:
+            out = subprocess.check_output(['ntpq', '-c', 'rv', host])
+            jitter = float([x for x in out.decode('utf-8').replace('\n', ' ').split(', ') if x.startswith('sys_jitter')][0].split('=')[1]) / 1000.0
+        except Exception as e:
+            logger.exception('Failed to get ntp system status')
+            jitter = None
+
+        try:
+            out = subprocess.check_output(['ntpq', '-p', host])
+            ntp_status = [x[0] for x in out.decode('utf-8').split('\n')[2:-1]]
+            prio = [' ', 'X', '-', '+', '*', 'o']
+            max_p = 0
+            for s in ntp_status:
+                if prio.index(s) > max_p:
+                    max_p = prio.index(s)
+            ntp_status = prio[max_p]
+        except Exception as e:
+            logger.exception('Failed to get ntp peer status')
+            ntp_status = '?'
+
+        return ntp_status, jitter
+
+    @staticmethod
+    def _format_time(seconds):
+        if seconds is None:
+            return "?.???s"
+
+        if seconds == 0:
+            return "0.000s"
+
+        units = ['s', 'ms', 'µs', 'ns', 'ps']
+        unit_i = 0
+
+        while seconds < 1:
+            seconds = seconds * 1000.0
+            unit_i += 1
+
+        return "{:.3f}{}".format(seconds, units[unit_i])
 
     @staticmethod
     def render(output, fnt_time, fnt_d, fnt_icon, sat_count, ntp_status, jitter, x, y):
@@ -90,9 +136,14 @@ class App:
 
         time = widgets.TimeWidget(draw=draw, font=fnt_time)
 
+        if jitter is not None:
+            jitter_text = "±{}".format(App._format_time(jitter))
+        else:
+            jitter_text = "±?.???s"
+
         ntp_jitter = widgets.CenteredTextWidget(
             font=fnt_d,
-            text="±{}µs".format(jitter),
+            text=jitter_text,
             draw=draw
         )
         ntp_jitter.add_offset(0, time.height * 0.8)
