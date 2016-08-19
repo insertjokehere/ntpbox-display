@@ -1,0 +1,5 @@
+ntpbox-display (0.0.1-1) unstable; urgency=medium
+
+  * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
+
+ -- Will Hughes <william@hhome.me>  Fri, 19 Aug 2016 14:36:40 +1200
