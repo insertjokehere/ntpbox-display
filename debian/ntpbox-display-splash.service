@@ -1,9 +1,0 @@
-[Unit]
-Description=NTPBox display splash screen
-
-[Service]
-User=root
-ExecStart=/usr/bin/ntpbox-display splash
-
-[Install]
-WantedBy=multi-user.target

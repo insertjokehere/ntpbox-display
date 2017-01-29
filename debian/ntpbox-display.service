@@ -1,9 +1,0 @@
-[Unit]
-Description=NTPBox display daemon
-
-[Service]
-User=root
-ExecStart=/usr/bin/ntpbox-display status
-
-[Install]
-WantedBy=multi-user.target
